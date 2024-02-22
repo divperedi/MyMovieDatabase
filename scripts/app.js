@@ -185,8 +185,8 @@ function createMovieCard(movie) {
 
     const movieData = `
         <div class="poster-wrapper">
-        <img src="${normalizedMovie.poster === 'N/A' ? 'assets/dog.png' : normalizedMovie.poster}" alt="movie poster" class="activity-results__item">
-            <img src="${getHeartIcon(normalizedMovie)}" alt="Add to favourites" class="favourite-icon">
+        <img src="${normalizedMovie.poster === 'N/A' ? 'assets/dog.png' : normalizedMovie.poster}" alt="${normalizedMovie.title} movie poster" class="activity-results__item">            
+        <img src="${getHeartIcon(normalizedMovie)}" alt="Add to favourites" class="favourite-icon">
         </div>
         <h2 class="activity-results__item-header">${normalizedMovie.title}</h2>
         `;
@@ -235,8 +235,8 @@ function renderPagination() {
     const paginationContainer = document.createElement('div');
     paginationContainer.className = 'pagination-container';
 
-    const prevArrow = createArrow('left', '<', 'assets/left arrow.png', false);
-    const nextArrow = createArrow('right', '>', 'assets/right arrow.png', false);
+    const prevArrow = createArrow('left', 'previous page arrow', 'assets/left arrow.png', false);
+    const nextArrow = createArrow('right', 'next page arrow', 'assets/right arrow.png', false);
     const nextPageText = document.createElement('span');
     nextPageText.id = 'page-text';
 
@@ -257,7 +257,6 @@ function renderPagination() {
                 resultsContainer.appendChild(movieCardsContainer);
             }
         }
-        resultsContainer.appendChild(paginationContainer);
     } else {
         const moviesContainer = document.querySelector('.content-wrapper__aside--right');
         if (moviesContainer) {
@@ -360,7 +359,7 @@ function populateModal(modal, movie) {
 
     movieDetails.innerHTML = `
         <div class="movie-poster" style="flex: 1;">
-        <img src="${movie.Poster === 'N/A' ? 'assets/dog.png' : movie.Poster}" alt="${movie.Title}">
+        <img src="${movie.Poster === 'N/A' ? 'assets/dog.png' : movie.Poster}" alt="${movie.Title} movie poster">
         </div>
         <div class="movie-info" style="flex: 1;">
             <h2>${movie.Title}</h2>
@@ -395,24 +394,43 @@ async function searchMovies(event) {
 
     const page = window.location.pathname.split('/').pop();
 
-    if (response.Response === "True" && page !== 'favourites.html') {
-        const mainRef = document.querySelector('.content-wrapper');
-        mainRef.innerHTML = '';
+    const mainRef = document.querySelector('.content-wrapper');
 
-        displaySearchResults(response.Search);
-        foundMovies = response.Search;
-        renderMovies(foundMovies);
-        currentPage = 1;
-    } if (page === 'favourites.html') {
-        const favouritesContainer = document.querySelector('.favourites__content-wrapper');
-        favouritesContainer.innerHTML = '';
+    if (response.Response === "True") {
+        if (page !== 'favourites.html') {
+            const mainRef = document.querySelector('.content-wrapper');
+            mainRef.innerHTML = '';
 
-        displaySearchResults(response.Search);
-        foundMovies = response.Search;
-        renderMovies(foundMovies);
-        currentPage = 1;
+            const paginationContainer = document.querySelector('.pagination-container');
+            if (paginationContainer) {
+                paginationContainer.innerHTML = '';
+            }
+
+            displaySearchResults(response.Search);
+            foundMovies = response.Search;
+            renderMovies(foundMovies);
+            currentPage = 1;
+        } else {
+            const favouritesContainer = document.querySelector('.favourites__content-wrapper');
+            favouritesContainer.innerHTML = '';
+
+            displaySearchResults(response.Search);
+            foundMovies = response.Search;
+            renderMovies(foundMovies);
+            currentPage = 1;
+        }
     } else {
         console.error(`Error from API: ${response.Error}`);
+
+        // Create a new div element for the error message
+        const errorMessage = document.createElement('div');
+        errorMessage.className = 'error-message';
+        errorMessage.textContent = `Error: ${response.Error}`;
+
+        // Add the error message to the page
+        const mainRef = document.querySelector('.content-wrapper');
+        mainRef.innerHTML = '';
+        mainRef.appendChild(errorMessage);
     }
 }
 
