@@ -151,13 +151,6 @@ h1 {
     align-items: center;
 }
 
-.navigation__favourites-icon {
-    width: 35px; 
-    height: 35px;
-    margin-left: 10px;
-    vertical-align: middle;
-}
-
 a {
     text-decoration: none;
 }
@@ -262,6 +255,11 @@ a {
     cursor: pointer;
 }
 
+.activity-results__item {
+    width: 400px;
+    height: 550px;
+}
+
 .activity-results__item-header,
 h2 {
     word-wrap: break-word;
@@ -321,7 +319,7 @@ h2 {
     display: inline-block;
 }
 
-.favorite-icon {
+.favourite-icon {
     position: absolute;
     top: 10px;
     right: 10px;
@@ -394,5 +392,18 @@ h2 {
 .close-button:focus {
     color: rgb(118, 111, 111);
     text-decoration: none;
+    cursor: pointer;
+}
+
+.found-movie-cards-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 50px;
+    position: relative;
+    gap: 50px;
+  }
+  
+.found-favourite-icon {
+    position: absolute;
     cursor: pointer;
 }

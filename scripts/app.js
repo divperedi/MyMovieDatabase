@@ -6,6 +6,7 @@ import pagination from "./pagination.js";
 let currentPage = 1;
 const moviesPerPage = 4;
 let shuffledMovies = [];
+let foundMovies = [];
 
 window.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM loaded');
@@ -13,13 +14,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     try {
         const page = window.location.pathname.split('/').pop();
         if (page === 'favourites.html') {
-            // We're on the favourites page
-            renderFavorites();
+            renderFavourites();
         } else {
             await fetchTrailer();
             await fetchTopMovies();
         }
-        updateFavoritesIcons();
+        updateFavouritesIcons();
     } catch (error) {
         console.error(error);
     }
@@ -42,7 +42,7 @@ function getUniqueRandomItems(array, count) {
 }
 
 function renderCarousel(trailers) {
-     const carousel = document.createElement('div');
+    const carousel = document.createElement('div');
     carousel.className = 'carousel';
 
     trailers.forEach((trailer, index) => {
@@ -142,49 +142,64 @@ async function fetchTopMovies() {
         const currentMovies = pagination.paginate(shuffledMovies, currentPage, moviesPerPage);
         console.log('Current movies array:', currentMovies);
 
+        const moviesContainer = document.querySelector('.content-wrapper__aside--right');
+        moviesContainer.innerHTML = '';
+
+        //should use OMDB api not teachers, maybe create new function
         renderMovies(currentMovies);
+
+        document.getElementById('page-text').textContent = `Page ${currentPage} of ${Math.ceil(shuffledMovies.length / moviesPerPage)}`;
     } catch (error) {
         console.error(error);
         throw error;
     }
 }
 
-function renderMovies(movies) {
+function renderMovies(movies = [], shuffle = false) {
     const moviesContainer = document.querySelector('.content-wrapper__aside--right');
-    moviesContainer.innerHTML = '';
+    const page = window.location.pathname.split('/').pop();
 
     const movieCardsContainer = document.createElement('div');
     movieCardsContainer.className = 'movie-cards-container';
+
+    if (shuffle) {
+        movies = shuffleArray(movies);
+    }
 
     movies.forEach((movie) => {
         const movieCard = createMovieCard(movie);
         movieCardsContainer.appendChild(movieCard);
     });
 
-    moviesContainer.appendChild(movieCardsContainer);
-    renderPagination(shuffledMovies);
+    if (moviesContainer && page !== 'favourites.html') {
+        moviesContainer.appendChild(movieCardsContainer);
+    }
+
+    renderPagination(movies);
 }
 
 function createMovieCard(movie) {
+    const normalizedMovie = normalizeMovieData(movie);
     const movieCard = document.createElement('div');
     movieCard.className = 'movie-card';
 
     const movieData = `
         <div class="poster-wrapper">
-            <img src="${movie.poster}" alt="movie poster" class="activity-results__item">
-            <img src="${getHeartIcon(movie)}" alt="Add to favorites" class="favorite-icon">
+        <img src="${normalizedMovie.poster === 'N/A' ? 'assets/dog.png' : normalizedMovie.poster}" alt="movie poster" class="activity-results__item">
+            <img src="${getHeartIcon(normalizedMovie)}" alt="Add to favourites" class="favourite-icon">
         </div>
-        <h2 class="activity-results__item-header">${movie.title}</h2>
-    `;
+        <h2 class="activity-results__item-header">${normalizedMovie.title}</h2>
+        `;
 
     movieCard.innerHTML = movieData;
-    const favoriteIcon = movieCard.querySelector('.favorite-icon');
-    favoriteIcon.addEventListener('click', (event) => handleFavoriteIconClick(movie, favoriteIcon, event));
+    const favouriteIcon = movieCard.querySelector('.favourite-icon');
+    favouriteIcon.addEventListener('click', (event) => handleFavouriteIconClick(normalizedMovie, favouriteIcon, event));
 
     movieCard.addEventListener('click', async () => {
-        const movieDetails = await apiHandler.fetchData(`http://www.omdbapi.com/?apikey=cf9e4f0d&i=${movie.imdbid}&plot=full`);
+        const imdbIdProperty = movie.hasOwnProperty('imdbID') ? 'imdbID' : 'imdbid';
+        const movieDetails = await apiHandler.fetchData(`http://www.omdbapi.com/?apikey=cf9e4f0d&i=${movie[imdbIdProperty]}&plot=full`);
         populateModal(modal, movieDetails);
-        modal.style.display = 'block'; 
+        modal.style.display = 'block';
     });
 
     return movieCard;
@@ -193,30 +208,30 @@ function createMovieCard(movie) {
 const modal = createModal();
 const closeButton = modal.querySelector('.close-button');
 closeButton.addEventListener('click', () => {
-    modal.style.display = 'none'; // hide the modal
+    modal.style.display = 'none';
 });
 
-function handleFavoriteIconClick(movie, favoriteIcon, event) {
+function handleFavouriteIconClick(movie, favouriteIcon, event) {
     event.stopPropagation();
-    let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    let favourites = JSON.parse(localStorage.getItem('favourites')) || [];
 
-    const index = favorites.findIndex(favorite => favorite.imdbid === movie.imdbid);
+    const index = favourites.findIndex(favourite => favourite.imdbid === movie.imdbid);
 
     if (index === -1) {
-        favorites.push(movie);
+        favourites.push(movie);
     } else {
-        favorites.splice(index, 1);
+        favourites.splice(index, 1);
         const page = window.location.pathname.split('/').pop();
         if (page === 'favourites.html') {
-            favoriteIcon.parentElement.parentElement.remove();
+            favouriteIcon.parentElement.parentElement.remove();
         }
     }
 
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-    favoriteIcon.src = getHeartIcon(movie);
+    localStorage.setItem('favourites', JSON.stringify(favourites));
+    favouriteIcon.src = getHeartIcon(movie);
 }
 
-function renderPagination(movies) {
+function renderPagination() {
     const paginationContainer = document.createElement('div');
     paginationContainer.className = 'pagination-container';
 
@@ -228,21 +243,41 @@ function renderPagination(movies) {
     prevArrow.addEventListener('click', handlePrevArrowClick);
     nextArrow.addEventListener('click', handleNextArrowClick);
 
-    nextPageText.textContent = `Page ${currentPage} of ${Math.ceil(movies.length / moviesPerPage)}`;
+    nextPageText.textContent = `Page ${currentPage} of ${Math.ceil(shuffledMovies.length / moviesPerPage)}`;
 
     paginationContainer.appendChild(prevArrow);
-    paginationContainer.appendChild(nextPageText); // Update the text content here
+    paginationContainer.appendChild(nextPageText);
     paginationContainer.appendChild(nextArrow);
 
-    const moviesContainer = document.querySelector('.content-wrapper__aside--right');
-    moviesContainer.appendChild(paginationContainer);
+    const resultsContainer = document.querySelector('#results-container');
+    if (resultsContainer) {
+        if (page !== 'favourites.html') {
+            const movieCardsContainer = document.querySelector('.found-movie-cards-container');
+            if (movieCardsContainer) {
+                resultsContainer.appendChild(movieCardsContainer);
+            }
+        }
+        resultsContainer.appendChild(paginationContainer);
+    } else {
+        const moviesContainer = document.querySelector('.content-wrapper__aside--right');
+        if (moviesContainer) {
+            if (page !== 'favourites.html') {
+                const movieCardsContainer = document.querySelector('.found-movie-cards-container');
+                if (movieCardsContainer) {
+                    moviesContainer.appendChild(movieCardsContainer);
+                }
+            }
+            moviesContainer.appendChild(paginationContainer);
+        } else {
+            console.error('Movies container not found');
+        }
+    }
 }
 
 function handlePrevArrowClick() {
     if (currentPage > 1) {
         currentPage--;
         fetchTopMovies();
-        document.getElementById('page-text').textContent = `Page ${currentPage} of ${Math.ceil(shuffledMovies.length / moviesPerPage)}`;
     }
 }
 
@@ -250,32 +285,35 @@ function handleNextArrowClick() {
     if (currentPage < Math.ceil(shuffledMovies.length / moviesPerPage)) {
         currentPage++;
         fetchTopMovies();
-        document.getElementById('page-text').textContent = `Page ${currentPage} of ${Math.ceil(shuffledMovies.length / moviesPerPage)}`;
     }
 }
 
 function getHeartIcon(movie) {
-    let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-    const isFavorited = favorites.some(favorite => favorite.imdbid === movie.imdbid);
-    return isFavorited ? 'assets/heart red.png' : 'assets/heart.png';
+    let favourites = JSON.parse(localStorage.getItem('favourites')) || [];
+    const isFavourited = favourites.some(favourite => favourite.imdbid === movie.imdbid);
+    return isFavourited ? 'assets/heart red.png' : 'assets/heart.png';
 }
 
-const page = window.location.pathname.split('/').pop();
+let page = window.location.pathname.split('/').pop();
 
 if (page === 'favourites.html') {
-    renderFavorites();
+    renderFavourites();
 }
 
-async function renderFavorites() {
+async function renderFavourites() {
     try {
-        const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
-        const favoritesContainer = document.querySelector('.favourites__content-wrapper');
-        favoritesContainer.innerHTML = '';
+        const favourites = JSON.parse(localStorage.getItem('favourites')) || [];
+        const favouritesContainer = document.querySelector('.favourites__content-wrapper');
+        if (favouritesContainer) {
+            favouritesContainer.innerHTML = '';
 
-        favorites.forEach((movie) => {
-            const movieCard = createMovieCard(movie);
-            favoritesContainer.appendChild(movieCard);
-        });
+            favourites.forEach((movie) => {
+                const movieCard = createMovieCard(movie);
+                favouritesContainer.appendChild(movieCard);
+            });
+        } else {
+            console.error('Favourites container not found');
+        }
     } catch (error) {
         console.error(error);
     }
@@ -290,17 +328,17 @@ function shuffleArray(array) {
     return indices.map(index => array[index]);
 }
 
-function updateFavoritesIcons() {
-    const favoriteIcons = document.querySelectorAll('.favorite-icon');
-    favoriteIcons.forEach(icon => {
-        // update icon based on whether the associated movie is a favorite
+function updateFavouritesIcons() {
+    const favouriteIcons = document.querySelectorAll('.favourite-icon');
+    favouriteIcons.forEach(icon => {
+        //dont know if its necessary yet
     });
 }
 
 function createModal() {
     const modal = document.createElement('div');
     modal.className = 'modal';
-    modal.style.display = 'none'; // initially hidden
+    modal.style.display = 'none';
     modal.innerHTML = `
         <div class="modal-content">
             <span class="close-button">&times;</span>
@@ -322,7 +360,7 @@ function populateModal(modal, movie) {
 
     movieDetails.innerHTML = `
         <div class="movie-poster" style="flex: 1;">
-            <img src="${movie.Poster}" alt="${movie.Title}">
+        <img src="${movie.Poster === 'N/A' ? 'assets/dog.png' : movie.Poster}" alt="${movie.Title}">
         </div>
         <div class="movie-info" style="flex: 1;">
             <h2>${movie.Title}</h2>
@@ -344,9 +382,145 @@ function populateModal(modal, movie) {
     modalContent.style.background = '#FFA672';
 }
 
-/* <img src="${movie.Poster}" alt="Movie Poster"></img> */
-/* <p>Released: ${movie.Released}</p> 
-<p>DVD: ${movie.DVD}</p> 
-<p>Writer: ${movie.Writer}</p>
-<p>Language: ${movie.Language}</p> */
-{/* <p>Ratings: ${movie.Ratings.map(rating => `${rating.Source}: ${rating.Value}`).join(', ')}</p> */}
+document.querySelector('.navigation__search').addEventListener('submit', searchMovies);
+
+async function searchMovies(event) {
+    event.preventDefault();
+
+    const query = document.querySelector('.navigation__search-input').value;
+    console.log(`Searching for: ${query}`);
+
+    const response = await apiHandler.fetchData(`http://www.omdbapi.com/?apikey=cf9e4f0d&s=${query}`);
+    console.log("API Response:", response);
+
+    const page = window.location.pathname.split('/').pop();
+
+    if (response.Response === "True" && page !== 'favourites.html') {
+        const mainRef = document.querySelector('.content-wrapper');
+        mainRef.innerHTML = '';
+
+        displaySearchResults(response.Search);
+        foundMovies = response.Search;
+        renderMovies(foundMovies);
+        currentPage = 1;
+    } if (page === 'favourites.html') {
+        const favouritesContainer = document.querySelector('.favourites__content-wrapper');
+        favouritesContainer.innerHTML = '';
+
+        displaySearchResults(response.Search);
+        foundMovies = response.Search;
+        renderMovies(foundMovies);
+        currentPage = 1;
+    } else {
+        console.error(`Error from API: ${response.Error}`);
+    }
+}
+
+function displaySearchResults(movies) {
+    let resultsContainer = document.querySelector('#results-container');
+
+    if (!resultsContainer) {
+        resultsContainer = document.createElement('div');
+        resultsContainer.id = 'results-container';
+        document.getElementById('foundParentContainer').appendChild(resultsContainer);
+    }
+
+    resultsContainer.innerHTML = '';
+
+    const movieCardsContainer = document.createElement('div');
+    movieCardsContainer.className = 'found-movie-cards-container';
+
+    movies.forEach((movie) => {
+        const movieCard = createMovieCard(movie);
+        movieCardsContainer.appendChild(movieCard);
+    });
+
+    resultsContainer.appendChild(movieCardsContainer);
+}
+
+
+
+// async function displayMovieDetails(id) {
+//     const response = await apiHandler.fetchData(`http://www.omdbapi.com/?apikey=cf9e4f0d&i=${id}&plot=full`);
+//     populateModal(modal, response);
+//     modal.style.display = 'block';
+// }
+
+
+
+// function renderFoundMovies(movies) {
+//     const moviesContainer = document.querySelector('#results-container');
+//     moviesContainer.innerHTML = '';
+
+//     const movieCardsContainer = document.createElement('div');
+//     movieCardsContainer.className = 'found-movie-cards-container';
+
+//     movies.forEach((movie) => {
+//         const movieCard = createMovieCard(movie);
+//         movieCardsContainer.appendChild(movieCard);
+//     });
+
+//     moviesContainer.appendChild(movieCardsContainer);
+
+//     moviesContainer.addEventListener('click', (event) => {
+//         const target = event.target;
+//         if (target.classList.contains('found-favourite-icon')) {
+//             // Clicked on a heart icon
+//             const movieCard = target.closest('.movie-card');
+//             const movie = movies.find((m) => m.imdbID === movieCard.dataset.imdbID);
+//             handleFavouriteIconClick(movie, target, event);
+//         }
+//     });
+
+//     const favouriteIcon = document.createElement('img');
+//     favouriteIcon.src = getHeartIcon(movies);
+//     favouriteIcon.alt = 'Add to favourites';
+//     favouriteIcon.classList.add('found-favourite-icon');
+
+//     favouriteIcon.addEventListener('click', async (event) => {
+//         handleFavouriteIconClick(movies, favouriteIcon, event);
+//         await renderFavourites();
+//         createFoundMovieCard();
+//     });
+
+//     displayMovieDetails();
+// }
+
+// function createFoundMovieCard(movie) {
+//     const normalizedMovie = normalizeMovieData(movie);
+
+//     const movieCard = document.createElement('div');
+//     movieCard.className = 'movie-card';
+//     movieCard.dataset.imdbID = normalizedMovie.imdbid;
+
+//     const movieData = `
+//         <div class="poster-wrapper">
+//             <img src="${normalizedMovie.poster}" alt="movie poster" class="activity-results__item">
+//             <img src="${getHeartIcon(normalizedMovie)}" alt="Add to favourites" class="favourite-icon">
+//         </div>
+//         <h2 class="activity-results__item-header">${normalizedMovie.title}</h2>
+//         `;
+
+//     movieCard.innerHTML = movieData;
+//     const favouriteIcon = movieCard.querySelector('.favourite-icon');
+//     favouriteIcon.addEventListener('click', (event) => handleFavouriteIconClick(normalizedMovie, favouriteIcon, event));
+
+//     movieCard.addEventListener('click', async () => {
+//         const movieDetails = await apiHandler.fetchData(`http://www.omdbapi.com/?apikey=cf9e4f0d&i=${movie.imdbid}&plot=full`);
+//         populateModal(modal, movieDetails);
+//         modal.style.display = 'block';
+//     });
+
+//     return movieCard;
+// }
+
+function normalizeMovieData(movie) {
+    const normalizedMovie = {};
+    for (const key in movie) {
+        if (Object.prototype.hasOwnProperty.call(movie, key)) {
+            // Convert each key to lowercase
+            normalizedMovie[key.toLowerCase()] = movie[key];
+        }
+    }
+    return normalizedMovie;
+}
