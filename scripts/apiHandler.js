@@ -1,5 +1,8 @@
 'use strict';
 
+// Fetches data from given url,
+// transforms string to json, returns data,
+// catches errors and logs them
 async function fetchData(url) {
     try {
         const response = await fetch(url);

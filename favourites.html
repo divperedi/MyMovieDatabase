@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Movie Database - Favourites</title>
     <link rel="stylesheet" href="styles/style.css">
 </head>
-
 <body>
     <header class="header-hero">
         <img src="assets/1.jpeg" alt="Avengers movie banner poster">
@@ -25,6 +23,7 @@
             <img class="navigation__logo" src="assets/logo.png" alt="MyMovie logo" style="width: 220px; height: auto;">
         </a>
         <form class="navigation__search">
+            <label for="movie-search" class="visually-hidden">Search for a movie</label>
             <input type="text" class="navigation__search-input" placeholder="Type here...">
             <button type="submit" class="navigation__search-btn">Search</button>
         </form>
@@ -32,11 +31,9 @@
             <a href="favourites.html" class="navigation__favourites-btn">Favourites</a>
         </aside>
     </nav>
+    <section class="errorMsg"></section>
     <section id="foundParentContainer"></section>
-    <main class="favourites__content-wrapper">
-
-    </main>
+    <main class="favourites__content-wrapper"></main>
     <script type="module" src="scripts/app.js"></script>
 </body>
-
 </html>
