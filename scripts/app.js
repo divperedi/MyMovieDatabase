@@ -26,7 +26,6 @@ window.addEventListener('DOMContentLoaded', async () => {
             await fetchTrailer();
             await fetchTopMovies();
         }
-        updateFavouritesIcons();
     } catch (error) {
         console.error(error);
     }
@@ -484,12 +483,13 @@ function populateModal(modal, movie) {
 
 // Event handler for the submit event of search form,
 // prevents form from submitting, hides any existing error message, 
-// gets the search query, then fetches data from the OMDB API using search query,
-// if API response is successful and current page is not 'favourites.html', 
+// gets the search query, then fetches data from the OMDB api using search query,
+// if api response is successful and current page is not 'favourites.html', 
 // clears main content and pagination containers, displays search results, 
 // sets found movies to search results, renders found movies, 
 // sets current page to 1, if  current page is 'favourites.html', 
-// does the same but clears favourites container instead of main content and pagination containers If the API response is not successful, it displays an error message
+// does the same but clears favourites container instead of main content and pagination containers,
+// if api response is not successful, displays error message
 async function searchMovies(event) {
     event.preventDefault();
 
